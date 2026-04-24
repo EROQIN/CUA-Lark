@@ -1,0 +1,31 @@
+{
+  "name": "cua-lark",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CUA-Lark M1 desktop computer-use agent skeleton for Feishu/Lark.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "demo:m1": "tsx src/index.ts manual",
+    "demo:m1:manual": "tsx src/index.ts manual",
+    "demo:m1:vlm": "tsx src/index.ts vlm",
+    "demo:m2:im": "tsx src/index.ts m2:im"
+  },
+  "dependencies": {
+    "@ui-tars/operator-nut-js": "^1.2.3",
+    "@ui-tars/sdk": "^1.2.3",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
