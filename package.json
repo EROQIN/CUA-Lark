@@ -2,22 +2,25 @@
   "name": "cua-lark",
   "version": "0.1.0",
   "private": true,
-  "description": "CUA-Lark M1 desktop computer-use agent skeleton for Feishu/Lark.",
+  "description": "CUA-Lark UI-TARS GUIAgent based desktop testing harness for Feishu/Lark.",
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "demo:m1": "tsx src/index.ts manual",
-    "demo:m1:manual": "tsx src/index.ts manual",
-    "demo:m1:vlm": "tsx src/index.ts vlm",
-    "demo:m2:im": "tsx src/index.ts m2:im"
+    "task": "tsx src/index.ts task",
+    "task:gui": "tsx src/index.ts task:gui",
+    "demo:vc": "tsx src/index.ts demo:vc",
+    "demo:im": "tsx src/index.ts demo:im",
+    "demo:docs": "tsx src/index.ts demo:docs",
+    "demo:gui:vc": "tsx src/index.ts demo:gui:vc"
   },
   "dependencies": {
     "@ui-tars/operator-nut-js": "^1.2.3",
     "@ui-tars/sdk": "^1.2.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
