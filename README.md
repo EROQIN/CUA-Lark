@@ -31,6 +31,7 @@ Node.js 建议 `>=20`。
 - `TASK_MAX_TURNS`: GUIAgent 最大轮数
 - `TASK_STEP_DELAY_MS`: 每轮间隔
 - `TASK_PRODUCT`: `auto|im|docs|calendar|base|vc|mail`
+- `TASK_CONTEXT_IDS`: 可选，手动指定要注入的页面操作提示 ID，逗号分隔
 
 如果 `UI_TARS_*` 未配置，会回退读取 `VLM_BASE_URL / VLM_API_KEY / VLM_MODEL`。
 
@@ -84,6 +85,25 @@ runs/
 - `parsedPrediction`
 - 错误信息
 
+## 页面操作提示
+
+页面专属描述已解耦在 [src/context/operation-catalog.ts](/Users/erokin/develop/CUA-Lark/src/context/operation-catalog.ts)。运行任务时，CUA-Lark 会根据 `task.product` 和用户提示词自动选择少量相关上下文拼进 `GUIAgent.run(instruction)`。
+
+当前内置 context：
+
+- `global-command-search`: 飞书全局搜索 / Command+K
+- `im-chat-send-message`: IM 聊天发送消息
+- `docs-create-document`: 云文档创建与编辑
+- `vc-home-schedule-meeting`: 视频会议首页预约会议
+
+你可以直接修改 catalog 中的 `description`、`commonActions` 和 `safetyRules`。这些内容只作为自然语言上下文传给 UI-TARS，不会修改 UI-TARS SDK，也不会外部强制坐标。
+
+需要手动指定上下文时：
+
+```bash
+TASK_CONTEXT_IDS=global-command-search,vc-home-schedule-meeting pnpm task "打开飞书视频会议页面，点击预约会议，进入预约会议表单后停止"
+```
+
 ## 项目结构
 
 ```text
@@ -94,6 +114,7 @@ src/
     logger.ts
     native-gui-agent.ts
     types.ts
+  context/operation-catalog.ts
   reporter/report-generator.ts
   tasks/task-factory.ts
   utils/

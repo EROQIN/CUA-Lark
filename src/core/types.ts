@@ -13,6 +13,18 @@ export interface AgentTask {
   maxTurns: number;
   stepDelayMs: number;
   sendRealMessage: boolean;
+  contextIds?: string[];
+}
+
+export interface OperationContext {
+  id: string;
+  product: ProductType;
+  title: string;
+  triggers: string[];
+  whenToUse: string;
+  description: string[];
+  commonActions: string[];
+  safetyRules: string[];
 }
 
 export interface NativeGuiTurnResult {

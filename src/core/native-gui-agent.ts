@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { GUIAgent, StatusEnum, type GUIAgentData } from "@ui-tars/sdk";
 import { NutJSOperator } from "@ui-tars/operator-nut-js";
 import type { AppConfig } from "../config/env.js";
+import { renderOperationContexts, selectOperationContexts } from "../context/operation-catalog.js";
 import type { AgentTask, NativeGuiTurnResult } from "./types.js";
 import { ensureDir } from "../utils/file.js";
 import { logger } from "./logger.js";
@@ -93,8 +94,9 @@ export class NativeGuiAgentRunner {
 function buildNativeInstruction(task: AgentTask): string {
   const safety =
     task.product === "vc"
-      ? "安全约束：如果任务是预约会议测试，只进入预约会议表单后停止；不要点击最终的保存、预约、完成、创建或发送邀请按钮。"
+      ? ""
       : "";
+  const operationContextPrompt = renderOperationContexts(selectOperationContexts(task));
 
   return [
     task.instruction,
@@ -105,6 +107,7 @@ function buildNativeInstruction(task: AgentTask): string {
     task.messageContent ? `要发送的消息：${task.messageContent}` : "",
     task.documentTitle ? `目标文档标题：${task.documentTitle}` : "",
     task.documentBody ? `目标文档正文：${task.documentBody}` : "",
+    operationContextPrompt,
     "操作偏好：切换飞书页面或打开已有群聊/已有文档时，优先使用 Command+K 打开飞书内置搜索，搜索框会自动获得焦点。",
     "操作偏好：聊天输入框已聚焦时，可以一次性输入文本并按 Enter 发送。",
     "限制：Command+K 只用于页面切换或打开已有对象，不能用于新建云文档、预约会议等场景内具体操作。",

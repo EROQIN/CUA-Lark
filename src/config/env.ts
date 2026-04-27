@@ -20,6 +20,7 @@ export interface AppConfig {
     stepDelayMs: number;
     groupName: string;
     sendRealMessage: boolean;
+    contextIds: string[];
   };
   uiTars: {
     baseUrl?: string;
@@ -66,7 +67,8 @@ export function loadConfig(): AppConfig {
       maxTurns: envNumber("TASK_MAX_TURNS", envNumber("M2_MAX_TURNS", 12)),
       stepDelayMs: envNumber("TASK_STEP_DELAY_MS", envNumber("M2_STEP_DELAY_MS", 800)),
       groupName: process.env.TASK_GROUP_NAME ?? process.env.M2_GROUP_NAME ?? "测试群",
-      sendRealMessage: envFlag("TASK_SEND_REAL_MESSAGE", envFlag("M2_SEND_REAL_MESSAGE", true))
+      sendRealMessage: envFlag("TASK_SEND_REAL_MESSAGE", envFlag("M2_SEND_REAL_MESSAGE", true)),
+      contextIds: envList("TASK_CONTEXT_IDS", [])
     },
     uiTars: {
       baseUrl: process.env.UI_TARS_BASE_URL,

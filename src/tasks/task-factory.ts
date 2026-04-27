@@ -21,7 +21,8 @@ export function createCustomTask(config: AppConfig, userPrompt: string): AgentTa
     documentBody,
     maxTurns: config.task.maxTurns,
     stepDelayMs: config.task.stepDelayMs,
-    sendRealMessage: config.task.sendRealMessage
+    sendRealMessage: config.task.sendRealMessage,
+    contextIds: config.task.contextIds
   };
 }
 
@@ -36,7 +37,8 @@ export function createVcDemoTask(config: AppConfig): AgentTask {
     parsedGoal: "打开视频会议页面并进入预约会议表单，到达表单后停止，不创建真实会议",
     maxTurns: config.task.maxTurns,
     stepDelayMs: config.task.stepDelayMs,
-    sendRealMessage: false
+    sendRealMessage: false,
+    contextIds: config.task.contextIds
   };
 }
 
@@ -54,7 +56,8 @@ export function createImDemoTask(config: AppConfig): AgentTask {
     messageContent,
     maxTurns: config.task.maxTurns,
     stepDelayMs: config.task.stepDelayMs,
-    sendRealMessage: config.task.sendRealMessage
+    sendRealMessage: config.task.sendRealMessage,
+    contextIds: config.task.contextIds
   };
 }
 
@@ -71,7 +74,8 @@ export function createDocsDemoTask(config: AppConfig): AgentTask {
     documentTitle: title,
     maxTurns: config.task.maxTurns,
     stepDelayMs: config.task.stepDelayMs,
-    sendRealMessage: false
+    sendRealMessage: false,
+    contextIds: config.task.contextIds
   };
 }
 
