@@ -7,11 +7,16 @@ export class ReportGenerator {
 
   async generateTask(report: NativeTaskReport): Promise<NativeTaskReport> {
     const reportPath = path.join(this.runDir, "report.md");
-    await writeTextFile(reportPath, this.renderTaskMarkdown(report));
-    return {
+    const reportJsonPath = path.join(this.runDir, "report.json");
+    const enrichedReport: NativeTaskReport = {
       ...report,
-      reportPath
+      actionCount: report.actionCount ?? countExecutableActions(report),
+      reportPath,
+      reportJsonPath
     };
+    await writeTextFile(reportPath, this.renderTaskMarkdown(enrichedReport));
+    await writeTextFile(reportJsonPath, JSON.stringify(enrichedReport, null, 2));
+    return enrichedReport;
   }
 
   private renderTaskMarkdown(report: NativeTaskReport): string {
@@ -26,6 +31,7 @@ export class ReportGenerator {
       `Final Status: ${report.finalStatus}`,
       `Max Turns: ${report.maxTurns}`,
       `Total Turns: ${report.totalTurns}`,
+      `Action Count: ${report.actionCount ?? ""}`,
       `Started At: ${report.startedAt}`,
       `Ended At: ${report.endedAt}`,
       `Duration: ${report.durationMs} ms`,
@@ -68,4 +74,22 @@ export class ReportGenerator {
 
     return `${lines.join("\n")}\n`;
   }
+}
+
+function countExecutableActions(report: NativeTaskReport): number {
+  return report.turnResults
+    .flatMap((turn) => extractActionTypes(turn.parsedPrediction))
+    .filter((actionType) => actionType !== "finished").length;
+}
+
+function extractActionTypes(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(extractActionTypes);
+  }
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  const record = value as Record<string, unknown>;
+  const ownAction = typeof record.action_type === "string" ? [record.action_type] : [];
+  return [...ownAction, ...Object.values(record).flatMap(extractActionTypes)];
 }

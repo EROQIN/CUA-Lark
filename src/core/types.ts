@@ -54,7 +54,9 @@ export interface NativeTaskReport {
   endedAt: string;
   durationMs: number;
   totalTurns: number;
+  actionCount?: number;
   turnResults: NativeGuiTurnResult[];
   runId?: string;
   reportPath?: string;
+  reportJsonPath?: string;
 }

@@ -72,6 +72,7 @@ runs/
       gui-turn-1.png
       ...
     report.md
+    report.json
 ```
 
 报告包含：
@@ -80,10 +81,55 @@ runs/
 - 产品类型和解析目标
 - 最终状态
 - 每轮 UI-TARS 状态
+- 动作数
 - 截图路径
 - raw `prediction`
 - `parsedPrediction`
 - 错误信息
+
+`report.json` 是 M4 评测体系使用的机器可读单次运行报告，包含同样的任务元数据、最终状态、耗时、轮次、截图路径和模型预测结果。
+
+## M4 评测体系
+
+M4 增加批量评测、结构化指标和静态 HTML 看板。默认用例集位于 [eval/cases/m4-smoke.json](/Users/erokin/develop/CUA-Lark/eval/cases/m4-smoke.json)，覆盖 IM、Docs、VC 三类场景，每类 2 条 smoke case。
+
+在线批量执行真实飞书用例：
+
+```bash
+pnpm eval
+```
+
+只跑前 N 条用例：
+
+```bash
+EVAL_MAX_CASES=1 TASK_SEND_REAL_MESSAGE=false pnpm eval
+```
+
+离线汇总已有 `runs/`：
+
+```bash
+pnpm eval:offline
+```
+
+每次评测输出：
+
+```text
+runs/evaluations/
+  {evalRunId}/
+    summary.json
+    summary.md
+    index.html
+```
+
+指标包含：
+
+- 总成功率、通过数、失败数
+- 平均耗时、平均轮次、平均动作数
+- 按产品线统计的成功率
+- 失败原因分布
+- 每条用例的原始 `report.md` / `report.json` 路径
+
+规则判定默认检查 `finalStatus`、最大耗时、最大轮次、必需文本、必需动作类型和禁止文本。需要语义复核时可设置 `EVAL_VLM_VERIFY=true`，使用当前 `UI_TARS_*` 或 `VLM_*` 模型配置对运行证据做额外判断。
 
 ## 页面操作提示
 

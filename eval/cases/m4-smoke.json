@@ -1,0 +1,118 @@
+{
+  "cases": [
+    {
+      "id": "vc-schedule-form",
+      "title": "进入视频会议预约表单",
+      "product": "vc",
+      "instruction": "打开飞书视频会议页面，点击预约会议，进入预约会议表单后停止。不要点击最终确认、保存、创建或发送邀请。",
+      "tags": ["m4", "vc", "safe"],
+      "maxTurns": 12,
+      "stepDelayMs": 800,
+      "sendRealMessage": false,
+      "contextIds": ["global-command-search", "vc-home-schedule-meeting"],
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 180000,
+        "maxTurns": 32,
+        "requiredTexts": ["预约会议"],
+        "requiredActionTypes": ["finished"],
+        "forbiddenTexts": []
+      }
+    },
+    {
+      "id": "vc-fill-safe",
+      "title": "填写预约会议草稿",
+      "product": "vc",
+      "instruction": "打开飞书视频会议页面，点击预约会议，进入预约会议表单，填写一个名为CUA-Lark M4 Smoke的会议主题后停止。不要点击最终确认、保存、创建或发送邀请。",
+      "tags": ["m4", "vc", "safe"],
+      "maxTurns": 14,
+      "stepDelayMs": 800,
+      "sendRealMessage": false,
+      "contextIds": ["global-command-search", "vc-home-schedule-meeting"],
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 210000,
+        "maxTurns": 36,
+        "requiredTexts": ["CUA-Lark M4 Smoke"],
+        "requiredActionTypes": ["type", "finished"],
+        "forbiddenTexts": []
+      }
+    },
+    {
+      "id": "docs-create-title",
+      "title": "创建云文档并输入标题",
+      "product": "docs",
+      "instruction": "在飞书中创建一个新的云文档，标题为'CUA-Lark M4 评测文档'，看到标题出现在文档编辑界面后停止。",
+      "tags": ["m4", "docs"],
+      "maxTurns": 14,
+      "stepDelayMs": 800,
+      "sendRealMessage": false,
+      "contextIds": ["global-command-search", "docs-create-document"],
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 210000,
+        "maxTurns": 36,
+        "requiredTexts": ["CUA-Lark M4 评测文档"],
+        "requiredActionTypes": ["type", "finished"],
+        "forbiddenTexts": []
+      }
+    },
+    {
+      "id": "docs-open-existing",
+      "title": "通过搜索打开云文档入口",
+      "product": "docs",
+      "instruction": "打开飞书云文档页面，确认已经进入云文档首页或文档列表后停止。",
+      "tags": ["m4", "docs", "navigation"],
+      "maxTurns": 10,
+      "stepDelayMs": 800,
+      "sendRealMessage": false,
+      "contextIds": ["global-command-search", "docs-create-document"],
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 150000,
+        "maxTurns": 28,
+        "requiredTexts": ["云文档"],
+        "requiredActionTypes": ["finished"],
+        "forbiddenTexts": []
+      }
+    },
+    {
+      "id": "im-open-chat",
+      "title": "搜索并打开测试群",
+      "product": "im",
+      "instruction": "在IM中搜索'测试群'，打开对应群聊，确认当前会话标题或消息区显示目标群聊后停止。不要发送消息。",
+      "tags": ["m4", "im", "safe"],
+      "maxTurns": 12,
+      "stepDelayMs": 800,
+      "sendRealMessage": false,
+      "contextIds": ["global-command-search", "im-chat-send-message"],
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 180000,
+        "maxTurns": 32,
+        "requiredTexts": ["测试群"],
+        "requiredActionTypes": ["finished"],
+        "forbiddenTexts": []
+      }
+    },
+    {
+      "id": "im-draft-message",
+      "title": "输入 IM 草稿并停止",
+      "product": "im",
+      "instruction": "在IM中搜索'测试群'，打开对应群聊，在消息输入框输入'CUA-Lark M4 评测草稿'，看到草稿文字可见后停止。不要按 Enter，不要发送消息。",
+      "tags": ["m4", "im", "safe"],
+      "maxTurns": 14,
+      "stepDelayMs": 800,
+      "sendRealMessage": false,
+      "contextIds": ["global-command-search", "im-chat-send-message"],
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 210000,
+        "maxTurns": 36,
+        "requiredTexts": ["CUA-Lark M4 评测草稿"],
+        "requiredActionTypes": ["type", "finished"],
+        "forbiddenTexts": []
+      }
+    }
+  ]
+}

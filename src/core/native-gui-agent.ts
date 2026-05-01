@@ -25,10 +25,10 @@ export class NativeGuiAgentRunner {
       maxLoopCount: task.maxTurns,
       loopIntervalInMs: task.stepDelayMs,
       logger: {
-        log: (...args: unknown[]) => logger.info("UI-TARS", { args }),
-        info: (...args: unknown[]) => logger.info("UI-TARS", { args }),
-        warn: (...args: unknown[]) => logger.warn("UI-TARS", { args }),
-        error: (...args: unknown[]) => logger.error("UI-TARS", { args })
+        log: (...args: unknown[]) => logUiTarsInfo(args),
+        info: (...args: unknown[]) => logUiTarsInfo(args),
+        warn: (...args: unknown[]) => logger.warn("UI-TARS", { args: redactLogArgs(args) }),
+        error: (...args: unknown[]) => logger.error("UI-TARS", { args: redactLogArgs(args) })
       },
       onData: ({ data }) => {
         pendingRecords.push(this.recordTurn(data, screenshotDir, turns));
@@ -96,6 +96,7 @@ function buildNativeInstruction(task: AgentTask): string {
     task.product === "vc"
       ? ""
       : "";
+  const realActionSafety = buildRealActionSafety(task);
   const operationContextPrompt = renderOperationContexts(selectOperationContexts(task));
 
   return [
@@ -111,11 +112,55 @@ function buildNativeInstruction(task: AgentTask): string {
     "操作偏好：切换飞书页面或打开已有群聊/已有文档时，优先使用 Command+K 打开飞书内置搜索，搜索框会自动获得焦点。",
     "操作偏好：聊天输入框已聚焦时，可以一次性输入文本并按 Enter 发送。",
     "限制：Command+K 只用于页面切换或打开已有对象，不能用于新建云文档、预约会议等场景内具体操作。",
+    realActionSafety,
     safety,
     "完成条件：只有当前截图已经显示任务要求的最终状态时才结束。"
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function buildRealActionSafety(task: AgentTask): string {
+  if (task.sendRealMessage || task.product !== "im") {
+    return "";
+  }
+  return [
+    "安全限制：当前任务配置为 TASK_SEND_REAL_MESSAGE=false，不要发送真实 IM 消息。",
+    "如果任务要求输入消息，只允许把文本输入到聊天输入框作为草稿；看到草稿文字可见后立即结束。",
+    "不要按 Enter，不要点击发送按钮，也不要触发任何真实消息投递。"
+  ].join("\n");
+}
+
+function logUiTarsInfo(args: unknown[]): void {
+  logger.info("UI-TARS", { args: redactLogArgs(args) });
+}
+
+function redactLogArgs(args: unknown[]): unknown[] {
+  return args.map(redactValue);
+}
+
+function redactValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value
+      .replace(/"apiKey"\s*:\s*"[^"]*"/g, '"apiKey":"[REDACTED]"')
+      .replace(/"api_key"\s*:\s*"[^"]*"/g, '"api_key":"[REDACTED]"')
+      .replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer [REDACTED]");
+  }
+  if (Array.isArray(value)) {
+    return value.map(redactValue);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => {
+        const normalized = key.toLowerCase();
+        if (normalized.includes("apikey") || normalized.includes("api_key") || normalized === "authorization") {
+          return [key, "[REDACTED]"];
+        }
+        return [key, redactValue(item)];
+      })
+    );
+  }
+  return value;
 }
 
 function stripDataUrl(value: string): string {

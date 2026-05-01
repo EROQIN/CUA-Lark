@@ -14,7 +14,9 @@
     "demo:vc": "tsx src/index.ts demo:vc",
     "demo:im": "tsx src/index.ts demo:im",
     "demo:docs": "tsx src/index.ts demo:docs",
-    "demo:gui:vc": "tsx src/index.ts demo:gui:vc"
+    "demo:gui:vc": "tsx src/index.ts demo:gui:vc",
+    "eval": "tsx src/eval/index.ts online",
+    "eval:offline": "tsx src/eval/index.ts offline"
   },
   "dependencies": {
     "@ui-tars/operator-nut-js": "^1.2.3",
