@@ -79,6 +79,24 @@ export function createDocsDemoTask(config: AppConfig): AgentTask {
   };
 }
 
+export function createCalendarDemoTask(config: AppConfig): AgentTask {
+  const title = "CUA-Lark M4 日历测试会议";
+  const attendee = "张三";
+  const userPrompt = `打开日历，创建一个明天下午2点的会议，标题为'${title}'，邀请${attendee}参加`;
+
+  return {
+    name: "Calendar Create Meeting Demo",
+    instruction: userPrompt,
+    product: "calendar",
+    userPrompt,
+    parsedGoal: `在日历中创建明天下午 2 点的会议 ${title}，邀请 ${attendee} 参加并验证保存成功`,
+    maxTurns: config.task.maxTurns,
+    stepDelayMs: config.task.stepDelayMs,
+    sendRealMessage: config.task.sendRealMessage,
+    contextIds: config.task.contextIds
+  };
+}
+
 function resolveTaskProduct(rawProduct: string | undefined, prompt: string): ProductType {
   const normalized = rawProduct?.toLowerCase();
   if (normalized && normalized !== "auto" && ["im", "docs", "calendar", "base", "vc", "mail"].includes(normalized)) {
@@ -88,23 +106,31 @@ function resolveTaskProduct(rawProduct: string | undefined, prompt: string): Pro
   if (/群|消息|IM|联系人|聊天/.test(prompt)) {
     return "im";
   }
+  if (/日历|日程|Calendar|参会人/.test(prompt) || (/会议/.test(prompt) && /邀请|参加|明天|今天|后天|上午|下午/.test(prompt))) {
+    return "calendar";
+  }
   if (/文档|标题|正文|Docs|云文档/.test(prompt)) {
     return "docs";
   }
-  if (/视频会议|预约会议|预定会议|发起会议|加入会议|VC|会议/.test(prompt)) {
+  if (/视频会议|预约会议|预定会议|发起会议|加入会议|VC/.test(prompt)) {
     return "vc";
   }
   return "auto";
 }
 
 function resolveMessageContent(prompt: string): string {
+  const explicitMessage = prompt.match(
+    /(?:发送|回复|回答)[^'"“”‘’。；;]*(?:消息|内容|文本|回复|回答)[^'"“”‘’。；;]*['"“”‘’]([^'"“”‘’]+)['"“”‘’]/
+  )?.[1];
+  if (explicitMessage) {
+    return explicitMessage;
+  }
+
   const quoted = [...prompt.matchAll(/['"“”‘’]([^'"“”‘’]+)['"“”‘’]/g)].map((match) => match[1]);
-  if (quoted.length >= 2) {
+  if (quoted.length >= 2 && /(?:发送|回复|回答).*(?:消息|内容|文本|回复|回答)/.test(prompt)) {
     return quoted[1];
   }
-  if (/消息/.test(prompt)) {
-    return `CUA-Lark 自动化测试消息 ${nowIso()}`;
-  }
+
   return "";
 }
 
@@ -125,13 +151,18 @@ function buildParsedGoal(
   documentBody?: string
 ): string {
   if (product === "im") {
-    return `在 IM 中搜索 ${groupName}，发送 ${messageContent || "指定消息"} 并验证发送成功`;
+    return messageContent
+      ? `在 IM 中搜索 ${groupName}，发送 ${messageContent} 并验证发送成功`
+      : `在 IM 中搜索 ${groupName}，根据用户原始提示和聊天上下文组织消息内容并验证发送成功`;
   }
   if (product === "docs") {
     return `创建或打开云文档 ${documentTitle ?? "未命名文档"}，输入 ${documentBody ?? "指定标题/正文"} 并验证可见`;
   }
   if (product === "vc") {
     return `在视频会议中完成会议任务：${prompt}`;
+  }
+  if (product === "calendar") {
+    return `在日历中完成日程或会议创建任务：${prompt}`;
   }
   return prompt;
 }

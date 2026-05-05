@@ -1,12 +1,18 @@
 import path from "node:path";
 import type { AppConfig } from "../config/env.js";
 import { CUALarkAgent } from "../core/agent.js";
-import type { AgentTask, NativeTaskReport } from "../core/types.js";
+import type { AgentTask, NativeTaskReport, WorkflowReport } from "../core/types.js";
 import { createCustomTask } from "../tasks/task-factory.js";
+import { WorkflowRunner } from "../workflow/workflow-runner.js";
 import { createRunId, nowIso } from "../utils/time.js";
 import { loadEvalCases } from "./case-loader.js";
 import { buildEvalSummary } from "./metrics.js";
-import { countExecutableActions, nativeReportToEvaluable, readOfflineRunReports } from "./report-reader.js";
+import {
+  countExecutableActions,
+  nativeReportToEvaluable,
+  readOfflineRunReports,
+  workflowReportToEvaluable
+} from "./report-reader.js";
 import { writeEvaluationArtifacts } from "./reporting.js";
 import type { EvaluableRunReport, EvalCase, EvalCaseResult, EvalConfig, EvalSummary } from "./types.js";
 import { verifyRunReport } from "./verifier.js";
@@ -21,14 +27,27 @@ async function runOnlineEvaluation(evalConfig: EvalConfig, appConfig: AppConfig)
   const evalRunId = createRunId();
   const outputDir = path.join(evalConfig.outputDir, evalRunId);
   const startedAt = nowIso();
-  const cases = await loadEvalCases(evalConfig.caseSetPath, evalConfig.maxCases);
-  const agent = new CUALarkAgent(appConfig);
+  const cases = await loadEvalCases(evalConfig.caseSetPath, evalConfig.maxCases, evalConfig.caseIds);
+  const agent = new CUALarkAgent({
+    ...appConfig,
+    notification: {
+      ...appConfig.notification,
+      taskComplete: false
+    }
+  });
+  const workflowRunner = new WorkflowRunner({
+    ...appConfig,
+    notification: {
+      ...appConfig.notification,
+      taskComplete: false
+    }
+  });
   const results: EvalCaseResult[] = [];
 
   for (const evalCase of cases) {
-    const task = createTaskForCase(evalCase, appConfig);
-    const report = await agent.runTask(task);
-    const result = await buildOnlineResult(evalCase, report, evalConfig, appConfig);
+    const result = evalCase.workflow
+      ? await buildWorkflowOnlineResult(evalCase, await workflowRunner.runWorkflow(evalCase.workflow), evalConfig, appConfig)
+      : await buildOnlineResult(evalCase, await agent.runTask(createTaskForCase(evalCase, appConfig)), evalConfig, appConfig);
     results.push(result);
 
     if (evalConfig.stopOnFailure && !result.passed) {
@@ -38,6 +57,43 @@ async function runOnlineEvaluation(evalConfig: EvalConfig, appConfig: AppConfig)
 
   const summary = buildEvalSummary(evalRunId, "online", startedAt, nowIso(), results);
   return writeEvaluationArtifacts(summary, outputDir);
+}
+
+async function buildWorkflowOnlineResult(
+  evalCase: EvalCase,
+  report: WorkflowReport,
+  evalConfig: EvalConfig,
+  appConfig: AppConfig
+): Promise<EvalCaseResult> {
+  const evaluable = workflowReportToEvaluable(report);
+  const verification = await verifyRunReport(evaluable, evalCase.expected, {
+    vlmVerify: evalConfig.vlmVerify,
+    appConfig
+  });
+
+  return {
+    caseId: evalCase.id,
+    title: evalCase.title,
+    product: evalCase.product,
+    tags: evalCase.tags,
+    passed: verification.passed,
+    runId: report.workflowRunId,
+    finalStatus: report.finalStatus,
+    durationMs: report.durationMs,
+    turnCount: report.totalTurns,
+    actionCount: report.actionCount,
+    verification,
+    failureReason: verification.reasons[0] ?? firstWorkflowFailure(report),
+    reportPath: report.workflowReportMarkdownPath,
+    reportJsonPath: report.workflowReportPath,
+    productTrail: report.productTrail,
+    workflowPhaseCount: report.workflowPhases.length,
+    workflowPassedPhaseCount: report.workflowPhases.filter((phase) => phase.passed).length,
+    recoveryCount: report.recoveryCount,
+    advancedEvents: report.advancedEvents,
+    workflowReportPath: report.workflowReportPath,
+    workflowReportMarkdownPath: report.workflowReportMarkdownPath
+  };
 }
 
 async function runOfflineEvaluation(evalConfig: EvalConfig, appConfig: AppConfig): Promise<EvalSummary> {
@@ -102,8 +158,13 @@ async function buildOnlineResult(
     verification,
     failureReason: verification.reasons[0] ?? "",
     reportPath: report.reportPath,
-    reportJsonPath: report.reportJsonPath
+    reportJsonPath: report.reportJsonPath,
+    reportHtmlPath: report.reportHtmlPath
   };
+}
+
+function firstWorkflowFailure(report: WorkflowReport): string {
+  return report.workflowPhases.find((phase) => !phase.passed)?.failureReason ?? "";
 }
 
 async function buildOfflineResult(
@@ -130,6 +191,14 @@ async function buildOfflineResult(
     verification,
     failureReason: verification.reasons[0] ?? "",
     reportPath: report.reportPath,
-    reportJsonPath: report.reportJsonPath
+    reportJsonPath: report.reportJsonPath,
+    reportHtmlPath: report.reportHtmlPath,
+    productTrail: report.productTrail,
+    workflowPhaseCount: report.workflowPhaseCount,
+    workflowPassedPhaseCount: report.workflowPassedPhaseCount,
+    recoveryCount: report.recoveryCount,
+    advancedEvents: report.advancedEvents,
+    workflowReportPath: report.workflowReportPath,
+    workflowReportMarkdownPath: report.workflowReportMarkdownPath
   };
 }

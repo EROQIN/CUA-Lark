@@ -9,14 +9,21 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "tsc -p tsconfig.json --noEmit",
+    "doctor": "tsx src/doctor.ts",
     "task": "tsx src/index.ts task",
     "task:gui": "tsx src/index.ts task:gui",
+    "task:inbox": "tsx src/index.ts task:inbox",
     "demo:vc": "tsx src/index.ts demo:vc",
     "demo:im": "tsx src/index.ts demo:im",
     "demo:docs": "tsx src/index.ts demo:docs",
+    "demo:calendar": "tsx src/index.ts demo:calendar",
+    "demo:cross": "tsx src/index.ts demo:cross",
     "demo:gui:vc": "tsx src/index.ts demo:gui:vc",
     "eval": "tsx src/eval/index.ts online",
-    "eval:offline": "tsx src/eval/index.ts offline"
+    "eval:nl": "tsx src/eval/natural-language.ts",
+    "eval:offline": "tsx src/eval/index.ts offline",
+    "eval:all": "tsx src/eval/run-all.ts",
+    "eval:ui": "tsx src/eval/ui-server.ts"
   },
   "dependencies": {
     "@ui-tars/operator-nut-js": "^1.2.3",

@@ -18,6 +18,8 @@ export class NativeGuiAgentRunner {
 
     const turns: NativeGuiTurnResult[] = [];
     const pendingRecords: Array<Promise<void>> = [];
+    const startedMs = Date.now();
+    let previousEventMs = startedMs;
     const operator = new NutJSOperator();
     const agent = new GUIAgent({
       operator,
@@ -31,10 +33,14 @@ export class NativeGuiAgentRunner {
         error: (...args: unknown[]) => logger.error("UI-TARS", { args: redactLogArgs(args) })
       },
       onData: ({ data }) => {
-        pendingRecords.push(this.recordTurn(data, screenshotDir, turns));
+        const timing = nextTurnTiming(startedMs, previousEventMs);
+        previousEventMs = timing.nowMs;
+        pendingRecords.push(this.recordTurn(data, screenshotDir, turns, undefined, timing));
       },
       onError: ({ data, error }) => {
-        pendingRecords.push(this.recordTurn(data, screenshotDir, turns, error.message));
+        const timing = nextTurnTiming(startedMs, previousEventMs);
+        previousEventMs = timing.nowMs;
+        pendingRecords.push(this.recordTurn(data, screenshotDir, turns, error.message, timing));
       }
     });
 
@@ -65,7 +71,8 @@ export class NativeGuiAgentRunner {
     data: GUIAgentData,
     screenshotDir: string,
     turns: NativeGuiTurnResult[],
-    error?: string
+    error?: string,
+    timing?: TurnTiming
   ): Promise<void> {
     const lastConversation = data.conversations.at(-1);
     const screenshotConversation = [...data.conversations].reverse().find((conversation) => conversation.screenshotBase64);
@@ -79,6 +86,8 @@ export class NativeGuiAgentRunner {
       parsedPrediction: lastConversation?.predictionParsed ?? predictionConversation?.predictionParsed,
       screenshotSize: screenshotConversation?.screenshotContext?.size,
       scaleFactor: screenshotConversation?.screenshotContext?.scaleFactor,
+      elapsedMs: timing?.elapsedMs,
+      durationMs: timing?.durationMs,
       error: error ?? data.errMsg ?? data.error?.message
     };
     turns.push(turn);
@@ -89,6 +98,21 @@ export class NativeGuiAgentRunner {
       turn.screenshotPath = screenshotPath;
     }
   }
+}
+
+interface TurnTiming {
+  nowMs: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+
+function nextTurnTiming(startedMs: number, previousEventMs: number): TurnTiming {
+  const nowMs = Date.now();
+  return {
+    nowMs,
+    elapsedMs: nowMs - startedMs,
+    durationMs: nowMs - previousEventMs
+  };
 }
 
 function buildNativeInstruction(task: AgentTask): string {
@@ -106,6 +130,9 @@ function buildNativeInstruction(task: AgentTask): string {
     `解析目标：${task.parsedGoal}`,
     task.groupName ? `目标群聊/联系人：${task.groupName}` : "",
     task.messageContent ? `要发送的消息：${task.messageContent}` : "",
+    task.product === "im" && !task.messageContent
+      ? "消息生成要求：用户没有提供固定消息文本时，需要根据用户原始提示和当前聊天上下文自行组织回复内容；不要发送默认测试消息，不要使用“CUA-Lark 自动化测试消息”作为替代内容。"
+      : "",
     task.documentTitle ? `目标文档标题：${task.documentTitle}` : "",
     task.documentBody ? `目标文档正文：${task.documentBody}` : "",
     operationContextPrompt,

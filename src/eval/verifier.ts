@@ -27,7 +27,7 @@ export async function verifyRunReport(
     result.vlm = {
       enabled: true,
       passed: false,
-      reason: "Skipped because rule verification already failed."
+      reason: "规则校验未通过，已跳过 VLM 复核。"
     };
     return result;
   }
@@ -46,30 +46,30 @@ function verifyByRules(report: EvaluableRunReport, expected: EvalExpected | unde
   const targetFinalStatus = expected?.finalStatus ?? "success";
 
   if (report.finalStatus !== targetFinalStatus) {
-    reasons.push(`finalStatus expected ${targetFinalStatus}, got ${report.finalStatus}`);
+    reasons.push(`最终状态应为${formatFinalStatus(targetFinalStatus)}，实际为${formatFinalStatus(report.finalStatus)}`);
   }
   if (expected?.maxDurationMs && report.durationMs > expected.maxDurationMs) {
-    reasons.push(`duration ${report.durationMs}ms exceeded ${expected.maxDurationMs}ms`);
+    reasons.push(`耗时 ${report.durationMs}ms 超过上限 ${expected.maxDurationMs}ms`);
   }
   if (expected?.maxTurns && report.totalTurns > expected.maxTurns) {
-    reasons.push(`turn count ${report.totalTurns} exceeded ${expected.maxTurns}`);
+    reasons.push(`轮次 ${report.totalTurns} 超过上限 ${expected.maxTurns}`);
   }
 
   for (const text of expected?.requiredTexts ?? []) {
     if (!report.sourceText.includes(text)) {
-      reasons.push(`required text not found: ${text}`);
+      reasons.push(`未找到必需文本：${text}`);
     }
   }
 
   for (const actionType of expected?.requiredActionTypes ?? []) {
     if (!report.actionTypes.includes(actionType)) {
-      reasons.push(`required action type not found: ${actionType}`);
+      reasons.push(`未找到必需动作：${actionType}`);
     }
   }
 
   for (const text of expected?.forbiddenTexts ?? []) {
     if (report.sourceText.includes(text)) {
-      reasons.push(`forbidden text found: ${text}`);
+      reasons.push(`出现禁止文本：${text}`);
     }
   }
 
@@ -92,7 +92,7 @@ async function verifyByVlm(
     return {
       enabled: true,
       passed: false,
-      reason: "VLM verification requested but model endpoint, API key, or model name is missing."
+      reason: "已请求 VLM 复核，但缺少模型地址、API Key 或模型名称。"
     };
   }
 
@@ -134,7 +134,7 @@ async function verifyByVlm(
       return {
         enabled: true,
         passed: false,
-        reason: `VLM verification failed with HTTP ${response.status}`
+        reason: `VLM 复核请求失败，HTTP 状态码 ${response.status}`
       };
     }
 
@@ -146,13 +146,13 @@ async function verifyByVlm(
     return {
       enabled: true,
       passed: parsed.passed,
-      reason: parsed.reason || "VLM verification completed."
+      reason: parsed.reason || "VLM 复核完成。"
     };
   } catch (error) {
     return {
       enabled: true,
       passed: false,
-      reason: `VLM verification error: ${error instanceof Error ? error.message : String(error)}`
+      reason: `VLM 复核异常：${error instanceof Error ? error.message : String(error)}`
     };
   }
 }
@@ -168,4 +168,17 @@ function parseVlmJson(content: string): { passed: boolean; reason: string } {
 
 function truncate(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength)}\n...<truncated>`;
+}
+
+function formatFinalStatus(status: string): string {
+  if (status === "success") {
+    return "成功";
+  }
+  if (status === "failed") {
+    return "失败";
+  }
+  if (status === "max_turns") {
+    return "达到最大轮次";
+  }
+  return status;
 }

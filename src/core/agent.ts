@@ -7,6 +7,7 @@ import { ensureDir } from "../utils/file.js";
 import { createRunId, nowIso, sleep } from "../utils/time.js";
 import { logger } from "./logger.js";
 import { NativeGuiAgentRunner, nativeFinalStatus } from "./native-gui-agent.js";
+import { notifyTaskComplete } from "./notifier.js";
 import type { AgentTask, NativeGuiTurnResult, NativeTaskReport } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -68,6 +69,7 @@ export class CUALarkAgent {
     });
 
     logger.info("UI-TARS GUIAgent task finished", { runId, finalStatus, reportPath: report.reportPath });
+    await notifyTaskComplete(this.config, report);
     return report;
   }
 

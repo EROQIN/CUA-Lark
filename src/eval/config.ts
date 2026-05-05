@@ -18,6 +18,17 @@ function envNumber(name: string): number | undefined {
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+function envList(name: string): string[] {
+  const raw = process.env[name];
+  if (!raw) {
+    return [];
+  }
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function resolveMode(cliMode: string | undefined): EvalMode {
   const raw = (cliMode ?? process.env.EVAL_MODE ?? "online").toLowerCase();
   if (raw === "offline") {
@@ -32,6 +43,7 @@ export function loadEvalConfig(cliMode?: string): EvalConfig {
     caseSetPath: path.resolve(process.cwd(), process.env.EVAL_CASE_SET ?? "eval/cases/m4-smoke.json"),
     outputDir: path.resolve(process.cwd(), process.env.EVAL_OUTPUT_DIR ?? "runs/evaluations"),
     maxCases: envNumber("EVAL_MAX_CASES"),
+    caseIds: envList("EVAL_CASE_IDS"),
     stopOnFailure: envFlag("EVAL_STOP_ON_FAILURE", false),
     vlmVerify: envFlag("EVAL_VLM_VERIFY", false)
   };

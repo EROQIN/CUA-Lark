@@ -1,15 +1,31 @@
 import { readFile } from "node:fs/promises";
+import type { WorkflowDefinition, WorkflowStep } from "../core/types.js";
 import type { EvalCase, EvalExpected } from "./types.js";
 
 const productTypes = new Set(["im", "docs", "calendar", "base", "vc", "mail", "auto"]);
 const finalStatuses = new Set(["success", "failed", "max_turns"]);
+const workflowEntries = new Set(["direct", "im-inbox"]);
 
-export async function loadEvalCases(caseSetPath: string, maxCases?: number): Promise<EvalCase[]> {
+export async function loadEvalCases(caseSetPath: string, maxCases?: number, caseIds: string[] = []): Promise<EvalCase[]> {
   const raw = await readFile(caseSetPath, "utf8");
   const parsed = JSON.parse(raw) as unknown;
   const cases = Array.isArray(parsed) ? parsed : readCasesProperty(parsed);
   const validated = cases.map((item, index) => validateEvalCase(item, index));
-  return maxCases ? validated.slice(0, maxCases) : validated;
+  const filtered = filterByCaseIds(validated, caseIds);
+  return maxCases ? filtered.slice(0, maxCases) : filtered;
+}
+
+function filterByCaseIds(cases: EvalCase[], caseIds: string[]): EvalCase[] {
+  if (!caseIds.length) {
+    return cases;
+  }
+  const idSet = new Set(caseIds);
+  const filtered = cases.filter((item) => idSet.has(item.id));
+  const missing = caseIds.filter((id) => !cases.some((item) => item.id === id));
+  if (missing.length) {
+    throw new Error(`Eval case id not found: ${missing.join(", ")}`);
+  }
+  return filtered;
 }
 
 function readCasesProperty(value: unknown): unknown[] {
@@ -43,7 +59,61 @@ function validateEvalCase(value: unknown, index: number): EvalCase {
     stepDelayMs: readOptionalPositiveNumber(value.stepDelayMs, "stepDelayMs", id),
     sendRealMessage: readOptionalBoolean(value.sendRealMessage, "sendRealMessage", id),
     contextIds: readStringArray(value.contextIds, "contextIds", id, true),
-    expected: validateExpected(value.expected, id)
+    expected: validateExpected(value.expected, id),
+    workflow: validateWorkflow(value.workflow, id)
+  };
+}
+
+function validateWorkflow(value: unknown, caseId: string): WorkflowDefinition | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new Error(`Eval case ${caseId} workflow must be an object.`);
+  }
+
+  const id = readRequiredWorkflowString(value, "id", caseId);
+  const title = readRequiredWorkflowString(value, "title", caseId);
+  const entry = readRequiredWorkflowString(value, "entry", caseId);
+  if (!workflowEntries.has(entry)) {
+    throw new Error(`Eval case ${caseId} has unsupported workflow.entry: ${entry}`);
+  }
+  if (!Array.isArray(value.steps) || !value.steps.length) {
+    throw new Error(`Eval case ${caseId} workflow.steps must be a non-empty array.`);
+  }
+
+  return {
+    id,
+    title,
+    entry: entry as WorkflowDefinition["entry"],
+    inboxGroupName: readOptionalString(value.inboxGroupName, "workflow.inboxGroupName", caseId),
+    autoReplyStatus: readOptionalBoolean(value.autoReplyStatus, "workflow.autoReplyStatus", caseId),
+    steps: value.steps.map((item, index) => validateWorkflowStep(item, caseId, index))
+  };
+}
+
+function validateWorkflowStep(value: unknown, caseId: string, index: number): WorkflowStep {
+  if (!isRecord(value)) {
+    throw new Error(`Eval case ${caseId} workflow step at index ${index} must be an object.`);
+  }
+  const id = readRequiredWorkflowString(value, "id", caseId);
+  const title = readRequiredWorkflowString(value, "title", caseId);
+  const product = readRequiredWorkflowString(value, "product", caseId);
+  const instruction = readRequiredWorkflowString(value, "instruction", caseId);
+  if (!productTypes.has(product)) {
+    throw new Error(`Eval case ${caseId} workflow step ${id} has unsupported product: ${product}`);
+  }
+
+  return {
+    id,
+    title,
+    product: product as WorkflowStep["product"],
+    instruction,
+    contextIds: readStringArray(value.contextIds, "workflow.steps.contextIds", caseId, true),
+    expectedTexts: readStringArray(value.expectedTexts, "workflow.steps.expectedTexts", caseId, true),
+    maxTurns: readOptionalPositiveNumber(value.maxTurns, "workflow.steps.maxTurns", caseId),
+    stepDelayMs: readOptionalPositiveNumber(value.stepDelayMs, "workflow.steps.stepDelayMs", caseId),
+    sendRealMessage: readOptionalBoolean(value.sendRealMessage, "workflow.steps.sendRealMessage", caseId)
   };
 }
 
@@ -75,6 +145,24 @@ function readRequiredString(value: Record<string, unknown>, key: string, index: 
     throw new Error(`Eval case at index ${index} requires a non-empty ${key}.`);
   }
   return raw.trim();
+}
+
+function readRequiredWorkflowString(value: Record<string, unknown>, key: string, caseId: string): string {
+  const raw = value[key];
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error(`Eval case ${caseId} workflow requires a non-empty ${key}.`);
+  }
+  return raw.trim();
+}
+
+function readOptionalString(value: unknown, key: string, caseId: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`Eval case ${caseId} ${key} must be a string.`);
+  }
+  return value.trim() || undefined;
 }
 
 function readStringArray(value: unknown, key: string, caseId: string, defaultEmpty: boolean): string[] {

@@ -1,4 +1,10 @@
-import type { NativeGuiTurnResult, NativeTaskReport, ProductType } from "../core/types.js";
+import type {
+  AdvancedEvent,
+  NativeGuiTurnResult,
+  NativeTaskReport,
+  ProductType,
+  WorkflowDefinition
+} from "../core/types.js";
 
 export type EvalMode = "online" | "offline";
 
@@ -22,6 +28,7 @@ export interface EvalCase {
   sendRealMessage?: boolean;
   contextIds?: string[];
   expected?: EvalExpected;
+  workflow?: WorkflowDefinition;
 }
 
 export interface EvalConfig {
@@ -29,6 +36,7 @@ export interface EvalConfig {
   caseSetPath: string;
   outputDir: string;
   maxCases?: number;
+  caseIds: string[];
   stopOnFailure: boolean;
   vlmVerify: boolean;
 }
@@ -49,8 +57,16 @@ export interface EvaluableRunReport {
   runId?: string;
   reportPath?: string;
   reportJsonPath?: string;
+  reportHtmlPath?: string;
   sourceText: string;
   actionTypes: string[];
+  productTrail?: ProductType[];
+  workflowPhaseCount?: number;
+  workflowPassedPhaseCount?: number;
+  recoveryCount?: number;
+  advancedEvents?: AdvancedEvent[];
+  workflowReportPath?: string;
+  workflowReportMarkdownPath?: string;
 }
 
 export interface VerificationResult {
@@ -83,6 +99,14 @@ export interface EvalCaseResult {
   failureReason: string;
   reportPath?: string;
   reportJsonPath?: string;
+  reportHtmlPath?: string;
+  productTrail?: ProductType[];
+  workflowPhaseCount?: number;
+  workflowPassedPhaseCount?: number;
+  recoveryCount?: number;
+  advancedEvents?: AdvancedEvent[];
+  workflowReportPath?: string;
+  workflowReportMarkdownPath?: string;
 }
 
 export interface EvalMetricTotals {
@@ -90,6 +114,9 @@ export interface EvalMetricTotals {
   passed: number;
   failed: number;
   successRate: number;
+  totalDurationMs: number;
+  totalTurns: number;
+  totalActions: number;
   avgDurationMs: number;
   avgTurns: number;
   avgActions: number;
@@ -102,6 +129,7 @@ export interface EvalSummary {
   endedAt: string;
   totals: EvalMetricTotals & {
     failureReasons: Record<string, number>;
+    advanced: EvalAdvancedTotals;
   };
   byProduct: Record<string, EvalMetricTotals>;
   cases: EvalCaseResult[];
@@ -109,5 +137,20 @@ export interface EvalSummary {
     summaryJsonPath?: string;
     summaryMarkdownPath?: string;
     dashboardPath?: string;
+    dashboardUrl?: string;
+    latestDashboardPath?: string;
+    latestDashboardUrl?: string;
+    historyDashboardPath?: string;
+    historyDashboardUrl?: string;
   };
+}
+
+export interface EvalAdvancedTotals {
+  workflowCaseCount: number;
+  workflowPhaseCount: number;
+  workflowPhasePassRate: number;
+  crossProductCaseCount: number;
+  recoveryCount: number;
+  advancedEventCount: number;
+  advancedEventReasons: Record<string, number>;
 }

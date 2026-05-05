@@ -1,6 +1,6 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import type { NativeGuiTurnResult, NativeTaskReport, ProductType } from "../core/types.js";
+import type { NativeGuiTurnResult, NativeTaskReport, ProductType, WorkflowReport } from "../core/types.js";
 import type { EvaluableRunReport } from "./types.js";
 
 const productTypes = new Set(["im", "docs", "calendar", "base", "vc", "mail", "auto"]);
@@ -27,14 +27,30 @@ export async function readOfflineRunReports(runsDir: string, maxReports?: number
 }
 
 export async function readRunReport(runDir: string): Promise<EvaluableRunReport | undefined> {
+  const workflowJsonPath = path.join(runDir, "workflow-report.json");
+  if (await fileExists(workflowJsonPath)) {
+    const raw = await readFile(workflowJsonPath, "utf8");
+    const parsed = JSON.parse(raw) as WorkflowReport;
+    return workflowReportToEvaluable(parsed, {
+      runId: parsed.workflowRunId ?? path.basename(runDir),
+      workflowReportPath: parsed.workflowReportPath ?? workflowJsonPath,
+      workflowReportMarkdownPath: parsed.workflowReportMarkdownPath ?? path.join(runDir, "workflow-report.md")
+    });
+  }
+
   const jsonPath = path.join(runDir, "report.json");
   if (await fileExists(jsonPath)) {
     const raw = await readFile(jsonPath, "utf8");
     const parsed = JSON.parse(raw) as NativeTaskReport;
+    const defaultReportHtmlPath = path.join(runDir, "index.html");
+    const parsedReportHtmlPath =
+      parsed.reportHtmlPath && (await fileExists(parsed.reportHtmlPath)) ? parsed.reportHtmlPath : undefined;
+    const reportHtmlPath = parsedReportHtmlPath ?? ((await fileExists(defaultReportHtmlPath)) ? defaultReportHtmlPath : undefined);
     return nativeReportToEvaluable(parsed, {
       runId: parsed.runId ?? path.basename(runDir),
       reportPath: parsed.reportPath ?? path.join(runDir, "report.md"),
-      reportJsonPath: parsed.reportJsonPath ?? jsonPath
+      reportJsonPath: parsed.reportJsonPath ?? jsonPath,
+      reportHtmlPath
     });
   }
 
@@ -46,9 +62,42 @@ export async function readRunReport(runDir: string): Promise<EvaluableRunReport 
   return undefined;
 }
 
+export function workflowReportToEvaluable(
+  report: WorkflowReport,
+  defaults: Partial<
+    Pick<EvaluableRunReport, "runId" | "workflowReportPath" | "workflowReportMarkdownPath">
+  > = {}
+): EvaluableRunReport {
+  return {
+    taskName: report.title,
+    instruction: report.extractedInstruction || report.title,
+    product: "auto",
+    userPrompt: report.extractedInstruction ?? "",
+    parsedGoal: report.title,
+    finalStatus: normalizeFinalStatus(report.finalStatus),
+    startedAt: report.startedAt,
+    endedAt: report.endedAt,
+    durationMs: report.durationMs,
+    totalTurns: report.totalTurns,
+    turnResults: [],
+    runId: report.workflowRunId ?? defaults.runId,
+    reportPath: report.workflowReportMarkdownPath ?? defaults.workflowReportMarkdownPath,
+    reportJsonPath: report.workflowReportPath ?? defaults.workflowReportPath,
+    sourceText: buildWorkflowSourceText(report),
+    actionTypes: report.actionTypes ?? [],
+    productTrail: report.productTrail,
+    workflowPhaseCount: report.workflowPhases.length,
+    workflowPassedPhaseCount: report.workflowPhases.filter((phase) => phase.passed).length,
+    recoveryCount: report.recoveryCount,
+    advancedEvents: report.advancedEvents,
+    workflowReportPath: report.workflowReportPath ?? defaults.workflowReportPath,
+    workflowReportMarkdownPath: report.workflowReportMarkdownPath ?? defaults.workflowReportMarkdownPath
+  };
+}
+
 export function nativeReportToEvaluable(
   report: NativeTaskReport,
-  defaults: Partial<Pick<EvaluableRunReport, "runId" | "reportPath" | "reportJsonPath">> = {}
+  defaults: Partial<Pick<EvaluableRunReport, "runId" | "reportPath" | "reportJsonPath" | "reportHtmlPath">> = {}
 ): EvaluableRunReport {
   const actionTypes = extractActionTypesFromTurns(report.turnResults);
   return {
@@ -67,6 +116,7 @@ export function nativeReportToEvaluable(
     runId: report.runId ?? defaults.runId,
     reportPath: report.reportPath ?? defaults.reportPath,
     reportJsonPath: report.reportJsonPath ?? defaults.reportJsonPath,
+    reportHtmlPath: report.reportHtmlPath ?? defaults.reportHtmlPath,
     sourceText: buildNativeSourceText(report),
     actionTypes
   };
@@ -145,6 +195,32 @@ function buildNativeSourceText(report: NativeTaskReport): string {
       turn.prediction ?? "",
       turn.error ?? "",
       turn.parsedPrediction === undefined ? "" : JSON.stringify(turn.parsedPrediction)
+    ])
+  ].join("\n");
+}
+
+function buildWorkflowSourceText(report: WorkflowReport): string {
+  return [
+    report.title,
+    report.workflowId,
+    report.entry,
+    report.inboxGroupName ?? "",
+    report.extractedInstruction ?? "",
+    report.finalStatus,
+    report.productTrail.join(" -> "),
+    ...report.workflowPhases.flatMap((phase) => [
+      phase.id,
+      phase.title,
+      phase.product,
+      phase.finalStatus,
+      phase.failureReason,
+      phase.reportPath ?? ""
+    ]),
+    ...report.advancedEvents.flatMap((event) => [
+      event.type,
+      event.phaseId ?? "",
+      event.message,
+      event.evidence ?? ""
     ])
   ].join("\n");
 }

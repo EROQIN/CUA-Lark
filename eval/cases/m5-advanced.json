@@ -1,0 +1,65 @@
+{
+  "cases": [
+    {
+      "id": "cross-im-calendar-invite-confirm",
+      "title": "IM 日历邀请确认联动",
+      "product": "auto",
+      "instruction": "进入任务群，找到最新日历邀请或日历任务，从 IM 跳转到日历确认参与，再返回任务群发送完成状态。",
+      "tags": ["m5", "advanced", "cross-product", "workflow"],
+      "maxTurns": 22,
+      "stepDelayMs": 800,
+      "sendRealMessage": true,
+      "contextIds": ["global-resilience", "global-command-search", "im-task-inbox", "calendar-invite-confirm"],
+      "workflow": {
+        "id": "cross-im-calendar-invite-confirm",
+        "title": "IM 日历邀请确认联动",
+        "entry": "direct",
+        "inboxGroupName": "任务群",
+        "autoReplyStatus": true,
+        "steps": [
+          {
+            "id": "open-task-inbox",
+            "title": "打开任务群并定位日历邀请",
+            "product": "im",
+            "instruction": "在IM中搜索'任务群'并打开任务群，找到最新的日历邀请或日历任务消息，确认任务消息可见后停止。不要点击确认、接受或跳转按钮。",
+            "contextIds": ["global-resilience", "global-command-search", "im-task-inbox"],
+            "expectedTexts": ["任务群"],
+            "maxTurns": 14,
+            "stepDelayMs": 800,
+            "sendRealMessage": true
+          },
+          {
+            "id": "confirm-calendar-invite",
+            "title": "跳转日历并确认参与",
+            "product": "calendar",
+            "instruction": "从当前任务群里的日历邀请或日历任务消息进入日历详情，确认日程标题和时间与任务一致，然后点击接受、确认参加或保存；看到状态为已接受、已参加或已保存后停止。",
+            "contextIds": ["global-resilience", "calendar-invite-confirm", "calendar-create-event"],
+            "expectedTexts": [],
+            "maxTurns": 18,
+            "stepDelayMs": 800,
+            "sendRealMessage": true
+          },
+          {
+            "id": "return-im-verify",
+            "title": "返回任务群回写状态",
+            "product": "im",
+            "instruction": "回到IM任务群'任务群'，发送一条消息'CUA-Lark 跨产品联动测试完成：已确认日历邀请'，看到消息出现在聊天时间线后停止。",
+            "contextIds": ["global-resilience", "global-command-search", "im-task-inbox", "im-chat-send-message"],
+            "expectedTexts": ["CUA-Lark 跨产品联动测试完成：已确认日历邀请"],
+            "maxTurns": 14,
+            "stepDelayMs": 800,
+            "sendRealMessage": true
+          }
+        ]
+      },
+      "expected": {
+        "finalStatus": "success",
+        "maxDurationMs": 420000,
+        "maxTurns": 70,
+        "requiredTexts": ["CUA-Lark 跨产品联动测试完成：已确认日历邀请"],
+        "requiredActionTypes": ["type", "finished"],
+        "forbiddenTexts": []
+      }
+    }
+  ]
+}
